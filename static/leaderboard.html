@@ -8,17 +8,11 @@
   <link rel="stylesheet" href="/static/style.css"/>
   <style>
     .lb-layout{
-      max-width:900px;
-      margin:0 auto;
+      max-width:900px;margin:0 auto;
       padding:20px 16px 80px;
-      display:grid;
-      grid-template-columns:1fr 320px;
-      gap:20px;
+      display:grid;grid-template-columns:1fr 320px;gap:20px;
     }
-    .lb-main{}
-    .lb-side{}
-
-    .rank-row.normal{background:#fafafa}
+    .rank-row.normal{background:#faf8f5}
     .badge-tag{
       display:inline-block;
       background:linear-gradient(135deg,#FFD700,#FFA500);
@@ -40,63 +34,68 @@
       padding:1px 8px;font-size:10px;font-weight:800;
       margin-top:2px;margin-left:4px;
     }
-    .score-breakdown{
-      font-size:10px;color:var(--muted);
-      margin-top:2px;
-    }
+    .score-breakdown{font-size:10px;color:var(--muted);margin-top:2px}
 
     .side-card{
-      background:#fff;
-      border:1.5px solid var(--border);
-      border-radius:16px;
-      padding:16px;
-      margin-bottom:16px;
+      background:#fff;border:1.5px solid var(--border);
+      border-radius:16px;padding:16px;margin-bottom:16px;
     }
     .side-card-title{
-      font-size:13px;font-weight:900;
-      margin-bottom:12px;
-      display:flex;align-items:center;
-      justify-content:space-between;
+      font-size:13px;font-weight:900;margin-bottom:12px;
+      display:flex;align-items:center;justify-content:space-between;
     }
     .reset-badge{
-      background:#f0fdf4;color:#166534;
-      border-radius:20px;padding:3px 10px;
-      font-size:10px;font-weight:700;font-family:monospace;
+      background:#f0fdf4;color:#166534;border-radius:20px;
+      padding:3px 10px;font-size:10px;font-weight:700;font-family:monospace;
     }
 
     .mission-item{
       display:flex;align-items:center;gap:10px;
-      padding:9px 0;
-      border-bottom:1px solid var(--border);
+      padding:9px 0;border-bottom:1px solid var(--border);
     }
     .mission-item:last-child{border-bottom:none}
     .mission-icon{font-size:20px;flex-shrink:0}
     .mission-info{flex:1}
     .mission-title{font-size:12px;font-weight:800}
     .mission-desc{font-size:10px;color:var(--muted);margin-top:1px}
-    .mission-bonus{
-      font-size:11px;font-weight:900;
-      color:#00c896;flex-shrink:0;
-    }
-    .mission-done{
-      font-size:18px;flex-shrink:0;
-    }
+    .mission-bonus{font-size:11px;font-weight:900;color:#00c896;flex-shrink:0}
+    .mission-done{font-size:18px;flex-shrink:0}
     .mission-item.completed{opacity:.6}
     .mission-item.completed .mission-title{text-decoration:line-through}
 
-    .hot-item{
-      display:flex;align-items:center;gap:8px;
-      padding:8px 0;border-bottom:1px solid var(--border);
+    /* HOT PETS — 3 큰 카드 */
+    .hot-grid{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
     }
-    .hot-item:last-child{border-bottom:none}
-    .h-rank{font-size:12px;font-weight:900;width:20px;text-align:center;flex-shrink:0}
-    .h-emoji{font-size:20px;flex-shrink:0}
-    .h-info{flex:1;min-width:0}
-    .h-name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .h-owner{font-size:10px;color:var(--muted)}
-    .h-bar{height:3px;background:#f0f0f0;border-radius:2px;margin-top:3px}
-    .h-bar-fill{height:100%;background:linear-gradient(90deg,#ff6b35,#ff4500);border-radius:2px;transition:width .35s}
-    .h-count{font-size:11px;font-weight:900;color:#ff6b35;flex-shrink:0}
+    .hot-card{
+      border-radius:12px;overflow:hidden;
+      border:1.5px solid var(--border);
+      cursor:pointer;transition:transform .15s;
+      text-align:center;
+    }
+    .hot-card:hover{transform:translateY(-3px)}
+    .hot-card.rank1{border-color:#FFD700;border-width:2px}
+    .hot-card.rank2{border-color:#C0C0C0;border-width:2px}
+    .hot-card.rank3{border-color:#CD7F32;border-width:2px}
+    .hot-card-img{
+      width:100%;aspect-ratio:1/1;
+      object-fit:cover;display:block;
+    }
+    .hot-card-avatar{
+      width:100%;aspect-ratio:1/1;
+      display:flex;align-items:center;justify-content:center;
+      font-size:36px;background:var(--bg);
+    }
+    .hot-card-body{padding:8px 6px}
+    .hot-card-medal{font-size:16px}
+    .hot-card-name{
+      font-size:11px;font-weight:800;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      margin-top:2px;
+    }
+    .hot-card-score{
+      font-size:10px;font-weight:900;color:#ff6b35;margin-top:2px;
+    }
   </style>
 </head>
 <body>
@@ -119,7 +118,6 @@
         <div class="banner-pill">Resets May 1</div>
       </div>
     </div>
-
     <div class="board-header">
       <div>Rank</div>
       <div>Pet</div>
@@ -140,19 +138,17 @@
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
         Complete missions to earn bonus points!
       </div>
-      <div id="mission-list">
-        <div class="loading">Loading missions...</div>
-      </div>
+      <div id="mission-list"><div class="loading">Loading...</div></div>
     </div>
 
-    <!-- HOT RIGHT NOW -->
+    <!-- HOT RIGHT NOW — Top 3 only, big cards -->
     <div class="side-card">
       <div class="side-card-title">
-        🔥 Viral Right Now
+        🔥 Today's Hot Pets
         <span class="reset-badge" id="hot-timer">00:00:00</span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-        Trending in the last 24 hours
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+        Most viral in the last 24 hours
       </div>
       <div id="hot-list">
         <div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">
@@ -165,7 +161,6 @@
 
 </div>
 
-<!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="bottom-btn" onclick="location.href='/feed'">
     <span class="bottom-icon">🏠</span>Feed
@@ -185,10 +180,23 @@
 
 <script>
 const ME = localStorage.getItem('pawrank_user');
-if (!ME) window.location.href = '/';
+if (!ME) {
+  window.location.href = '/';
+} else {
+  fetch(`/profile/${ME}`)
+    .then(res => {
+      if (!res.ok) { localStorage.clear(); window.location.href = '/'; }
+    })
+    .catch(() => { localStorage.clear(); window.location.href = '/'; });
+}
+
 document.getElementById('nav-user').textContent = '@' + ME;
 
-const PET_EMOJI = {Dog:'🐕',Cat:'🐈',Rabbit:'🐰',Hamster:'🐹',Bird:'🐦',Other:'🐾'};
+const PET_EMOJI = {
+  Dog:'🐕', Cat:'🐈', Fish:'🐟', Bird:'🐦', Rabbit:'🐰',
+  'Guinea Pig':'🐹', Hamster:'🐹', Reptile:'🦎',
+  Snake:'🐍', Horse:'🐴', Other:'🐾'
+};
 const MEDALS    = ['🥇','🥈','🥉'];
 const PAGE_SIZE = 20;
 
@@ -240,13 +248,13 @@ function renderRankList() {
   }
 
   el.innerHTML = visible.map((e, i) => {
-    const cls    = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'normal';
-    const emoji  = PET_EMOJI[e.pet_type] || '🐾';
-    const avatar = e.pet_image
+    const cls      = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'normal';
+    const emoji    = PET_EMOJI[e.pet_type] || '🐾';
+    const avatar   = e.pet_image
       ? `<img src="${e.pet_image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
       : emoji;
-    const badge  = i === 0 ? '🥇 Gold' : i === 1 ? '🥈 Silver' : i === 2 ? '🥉 Bronze' : '';
-    const isViral = e.viral_score > e.total_likes;
+    const badge    = i === 0 ? '🥇 Gold' : i === 1 ? '🥈 Silver' : i === 2 ? '🥉 Bronze' : '';
+    const isViral  = e.viral_score > e.total_likes;
     const hasBonus = e.bonus_points > 0;
 
     return `
@@ -265,7 +273,7 @@ function renderRankList() {
               ${hasBonus ? `<span class="bonus-tag">+${e.bonus_points} bonus</span>` : ''}
             </div>
             <div class="score-breakdown">
-              ❤️ ${e.total_likes} likes
+              🐾 ${e.total_likes} likes
               ${isViral ? `· 🔥 ${e.viral_score} viral` : ''}
               ${hasBonus ? `· ⭐ ${e.bonus_points} mission pts` : ''}
             </div>
@@ -322,43 +330,44 @@ async function loadMissions() {
       </div>
       <div class="mission-bonus">+${m.bonus_points}pts</div>
       <div class="mission-done">${m.completed ? '✅' : '⬜'}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-let hotLog = JSON.parse(sessionStorage.getItem('pawrank_hot') || '{}');
-
 function renderHotList() {
-  const el     = document.getElementById('hot-list');
-  const cutoff = getNextMidnight() - 24 * 60 * 60 * 1000;
+  const el = document.getElementById('hot-list');
 
-  const scored = allEntries
+  const top3 = allEntries
     .filter(e => e.viral_score > 0)
     .sort((a, b) => b.viral_score - a.viral_score)
-    .slice(0, 10);
+    .slice(0, 3);
 
-  if (!scored.length) {
+  if (!top3.length) {
     el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">
       No viral activity yet 🔥</div>`;
     return;
   }
 
-  const max = scored[0].viral_score;
-  el.innerHTML = scored.map((e, i) => {
-    const pct   = Math.round(e.viral_score / max * 100);
-    const emoji = PET_EMOJI[e.pet_type] || '🐾';
-    return `
-      <div class="hot-item">
-        <div class="h-rank">${MEDALS[i] || (i+1)}</div>
-        <div class="h-emoji">${emoji}</div>
-        <div class="h-info">
-          <div class="h-name">${e.pet_name || e.username}</div>
-          <div class="h-owner">@${e.username}</div>
-          <div class="h-bar"><div class="h-bar-fill" style="width:${pct}%"></div></div>
-        </div>
-        <div class="h-count">🔥 ${e.viral_score}</div>
-      </div>`;
-  }).join('');
+  const rankClass = ['rank1','rank2','rank3'];
+  const medals    = ['🥇','🥈','🥉'];
+
+  el.innerHTML = `<div class="hot-grid">` +
+    top3.map((e, i) => {
+      const emoji  = PET_EMOJI[e.pet_type] || '🐾';
+      const imgEl  = e.pet_image
+        ? `<img class="hot-card-img" src="${e.pet_image}" onerror="this.style.display='none'"/>`
+        : `<div class="hot-card-avatar">${emoji}</div>`;
+      return `
+        <div class="hot-card ${rankClass[i]}"
+          onclick="location.href='/profile?u=${e.username}'">
+          ${imgEl}
+          <div class="hot-card-body">
+            <div class="hot-card-medal">${medals[i]}</div>
+            <div class="hot-card-name">${e.pet_name || e.username}</div>
+            <div class="hot-card-score">🔥 ${e.viral_score}</div>
+          </div>
+        </div>`;
+    }).join('') +
+  `</div>`;
 }
 
 loadLeaderboard();

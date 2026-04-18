@@ -32,84 +32,11 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            username     TEXT UNIQUE NOT NULL,
-            password     TEXT NOT NULL,
-            pet_name     TEXT,
-            pet_type     TEXT,
-            pet_year     INTEGER,
-            pet_bio      TEXT,
-            pet_image    TEXT,
-            bonus_points INTEGER DEFAULT 0,
-            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS posts (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            username     TEXT NOT NULL,
-            caption      TEXT,
-            location     TEXT,
-            image_url    TEXT NOT NULL,
-            likes        INTEGER DEFAULT 0,
-            viral_score  REAL DEFAULT 0,
-            theme        TEXT DEFAULT 'Bravest Pet',
-            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS likes (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id      INTEGER,
-            username     TEXT,
-            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(post_id, username)
-        );
-        CREATE TABLE IF NOT EXISTS comments (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id      INTEGER NOT NULL,
-            username     TEXT NOT NULL,
-            content      TEXT NOT NULL,
-            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS missions (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            title        TEXT NOT NULL,
-            description  TEXT NOT NULL,
-            mission_type TEXT NOT NULL,
-            target_value INTEGER NOT NULL,
-            bonus_points INTEGER NOT NULL,
-            date         TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS mission_completions (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            mission_id   INTEGER NOT NULL,
-            username     TEXT NOT NULL,
-            completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(mission_id, username)
-        );
-    """)
-    conn.commit()
-    conn.close()
-    
-
-init_db()
-
-endpoint_times: dict[str, list[float]] = {
-    "add": [], "remove": [], "leaderboard": [], "info": [], "performance": []
-}
-
-def track(endpoint: str, fn):
-    t0 = time.perf_counter()
-    result = fn()
-    endpoint_times[endpoint].append((time.perf_counter() - t0) * 1000)
-    return result
+def today_str() -> str:
+    return datetime.now().strftime('%Y-%m-%d')
 
 def hash_password(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
-
-def today_str() -> str:
-    return datetime.now().strftime('%Y-%m-%d')
 
 def generate_daily_missions():
     conn = get_db()
@@ -119,14 +46,14 @@ def generate_daily_missions():
     ).fetchone()
     if not existing:
         missions = [
-            ("📸 Daily Post",        "Upload 1 post today",                     "post_today",      1,  5),
-            ("❤️ Like Spree",         "Like 5 different posts today",            "likes_given",     5,  5),
-            ("💬 Chatterbox",         "Leave 3 comments today",                  "comments_given",  3,  5),
-            ("🔥 Viral Star",         "Get 5 likes within 1 hour on your post",  "hourly_likes",    5,  10),
-            ("👑 Fan Favorite",       "Get 10 total likes on your post",          "likes_received",  10, 15),
-            ("💌 Conversation King",  "Get 5 comments on your post",             "comments_received",5, 8),
-            ("🦁 Theme Champion",     "Post with this month's theme",            "theme_post",      1,  10),
-            ("🌟 Theme Supporter",    "Like 3 posts with this month's theme",    "theme_likes",     3,  5),
+            ("📸 Daily Post",        "Upload 1 post today",                    "post_today",       1,  1),
+            ("❤️ Like Spree",         "Like 5 different posts today",           "likes_given",      5,  1),
+            ("💬 Chatterbox",         "Leave 3 comments today",                 "comments_given",   3,  1),
+            ("🔥 Viral Star",         "Get 5 likes within 1 hour on your post", "hourly_likes",     5,  5),
+            ("👑 Fan Favorite",       "Get 10 total likes on your post",        "likes_received",   10, 7),
+            ("💌 Conversation King",  "Get 5 comments on your post",            "comments_received",5,  3),
+            ("🦁 Theme Champion",     "Post with this month's theme",           "theme_post",       1,  5),
+            ("🌟 Theme Supporter",    "Like 3 posts with this month's theme",   "theme_likes",      3,  1),
         ]
         for title, desc, mtype, target, bonus in missions:
             conn.execute("""
@@ -151,7 +78,7 @@ def calculate_viral_score(post_id: int, conn) -> float:
     return round(total + (recent * multiplier), 2)
 
 def check_and_complete_mission(username: str, mission_type: str, conn) -> tuple:
-    today = today_str()
+    today        = today_str()
     one_hour_ago = (datetime.now() - timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
 
     mission = conn.execute(
@@ -245,6 +172,79 @@ def check_and_complete_mission(username: str, mission_type: str, conn) -> tuple:
         return mission["title"], mission["bonus_points"]
 
     return None, 0
+
+def init_db():
+    conn = get_db()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            username     TEXT UNIQUE NOT NULL,
+            password     TEXT NOT NULL,
+            pet_name     TEXT,
+            pet_type     TEXT,
+            pet_year     INTEGER,
+            pet_bio      TEXT,
+            pet_image    TEXT,
+            bonus_points INTEGER DEFAULT 0,
+            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS posts (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            username     TEXT NOT NULL,
+            caption      TEXT,
+            location     TEXT,
+            image_url    TEXT NOT NULL,
+            likes        INTEGER DEFAULT 0,
+            viral_score  REAL DEFAULT 0,
+            theme        TEXT DEFAULT 'Bravest Pet',
+            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS likes (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id      INTEGER,
+            username     TEXT,
+            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(post_id, username)
+        );
+        CREATE TABLE IF NOT EXISTS comments (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id      INTEGER NOT NULL,
+            username     TEXT NOT NULL,
+            content      TEXT NOT NULL,
+            created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS missions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            title        TEXT NOT NULL,
+            description  TEXT NOT NULL,
+            mission_type TEXT NOT NULL,
+            target_value INTEGER NOT NULL,
+            bonus_points INTEGER NOT NULL,
+            date         TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS mission_completions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            mission_id   INTEGER NOT NULL,
+            username     TEXT NOT NULL,
+            completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id, username)
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+generate_daily_missions()
+
+endpoint_times: dict[str, list[float]] = {
+    "add": [], "remove": [], "leaderboard": [], "info": [], "performance": []
+}
+
+def track(endpoint: str, fn):
+    t0 = time.perf_counter()
+    result = fn()
+    endpoint_times[endpoint].append((time.perf_counter() - t0) * 1000)
+    return result
 
 
 class RegisterBody(BaseModel):
@@ -362,7 +362,6 @@ async def upload_post(
     username: str        = Form(...),
     caption:  str        = Form(""),
     location: str        = Form(""),
-    theme:    str        = Form("Bravest Pet"),
     image:    UploadFile = File(...)
 ):
     ext      = image.filename.split(".")[-1]
@@ -372,7 +371,7 @@ async def upload_post(
     conn = get_db()
     cursor = conn.execute(
         "INSERT INTO posts (username, caption, location, image_url, theme) VALUES (?,?,?,?,?)",
-        (username, caption, location, f"/uploads/{filename}", theme)
+        (username, caption, location, f"/uploads/{filename}", "Bravest Pet")
     )
     post_id = cursor.lastrowid
     conn.commit()
@@ -398,12 +397,19 @@ def get_posts(username: Optional[str] = None, limit: int = 50, offset: int = 0):
     conn = get_db()
     if username:
         rows = conn.execute(
-            "SELECT * FROM posts WHERE username=? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            """SELECT p.*, u.pet_image
+               FROM posts p
+               LEFT JOIN users u ON p.username = u.username
+               WHERE p.username=?
+               ORDER BY p.created_at DESC LIMIT ? OFFSET ?""",
             (username, limit, offset)
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT * FROM posts ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            """SELECT p.*, u.pet_image
+               FROM posts p
+               LEFT JOIN users u ON p.username = u.username
+               ORDER BY p.created_at DESC LIMIT ? OFFSET ?""",
             (limit, offset)
         ).fetchall()
     conn.close()
@@ -551,15 +557,20 @@ def get_api_leaderboard(limit: int = Query(default=20, ge=1, le=200)):
     def _():
         conn = get_db()
         rows = conn.execute("""
-            SELECT p.username, u.pet_name, u.pet_type, u.pet_image,
-                   SUM(p.likes) as total_likes,
-                   MAX(p.viral_score) as top_viral,
+            SELECT u.username, u.pet_name, u.pet_type, u.pet_image,
+                   best.likes as best_likes,
+                   best.viral_score as top_viral,
+                   best.image_url as best_post_image,
                    COALESCE(u.bonus_points, 0) as bonus_points
-            FROM posts p
-            LEFT JOIN users u ON p.username = u.username
-            GROUP BY p.username
-            ORDER BY (MAX(p.viral_score) + COALESCE(u.bonus_points, 0)) DESC,
-                     SUM(p.likes) DESC
+            FROM users u
+            JOIN posts best ON best.id = (
+                SELECT id FROM posts
+                WHERE username = u.username
+                ORDER BY likes DESC
+                LIMIT 1
+            )
+            ORDER BY (best.viral_score + COALESCE(u.bonus_points, 0)) DESC,
+                     best.likes DESC
             LIMIT ?
         """, (limit,)).fetchall()
         conn.close()
@@ -568,17 +579,18 @@ def get_api_leaderboard(limit: int = Query(default=20, ge=1, le=200)):
             "total_entries": len(rows),
             "leaderboard": [
                 {
-                    "rank":         i + 1,
-                    "medal":        medals[i] if i < 3 else None,
-                    "username":     r["username"],
-                    "pet_name":     r["pet_name"] or r["username"],
-                    "pet_type":     r["pet_type"] or "",
-                    "pet_image":    r["pet_image"] or "",
-                    "total_likes":  r["total_likes"] or 0,
-                    "viral_score":  round(r["top_viral"] or 0, 2),
-                    "bonus_points": r["bonus_points"],
-                    "total_score":  round((r["top_viral"] or 0) + r["bonus_points"], 2),
-                    "badge":        "🥇 Gold" if i == 0 else "🥈 Silver" if i == 1 else "🥉 Bronze" if i == 2 else ""
+                    "rank":            i + 1,
+                    "medal":           medals[i] if i < 3 else None,
+                    "username":        r["username"],
+                    "pet_name":        r["pet_name"] or r["username"],
+                    "pet_type":        r["pet_type"] or "",
+                    "pet_image":       r["pet_image"] or "",
+                    "best_post_image": r["best_post_image"] or "",
+                    "total_likes":     r["best_likes"] or 0,
+                    "viral_score":     round(r["top_viral"] or 0, 2),
+                    "bonus_points":    r["bonus_points"],
+                    "total_score":     round((r["top_viral"] or 0) + r["bonus_points"], 2),
+                    "badge":           "🥇 Gold" if i == 0 else "🥈 Silver" if i == 1 else "🥉 Bronze" if i == 2 else ""
                 }
                 for i, r in enumerate(rows)
             ]
@@ -590,15 +602,19 @@ def get_leaderboard_data(limit: int = Query(default=10, ge=1, le=200)):
     def _():
         conn = get_db()
         rows = conn.execute("""
-            SELECT p.username, u.pet_name, u.pet_type,
-                   SUM(p.likes) as total_likes,
-                   MAX(p.viral_score) as top_viral,
+            SELECT u.username, u.pet_name, u.pet_type,
+                   best.likes as best_likes,
+                   best.viral_score as top_viral,
                    COALESCE(u.bonus_points, 0) as bonus_points
-            FROM posts p
-            LEFT JOIN users u ON p.username = u.username
-            GROUP BY p.username
-            ORDER BY (MAX(p.viral_score) + COALESCE(u.bonus_points, 0)) DESC,
-                     SUM(p.likes) DESC
+            FROM users u
+            JOIN posts best ON best.id = (
+                SELECT id FROM posts
+                WHERE username = u.username
+                ORDER BY likes DESC
+                LIMIT 1
+            )
+            ORDER BY (best.viral_score + COALESCE(u.bonus_points, 0)) DESC,
+                     best.likes DESC
             LIMIT ?
         """, (limit,)).fetchall()
         conn.close()
@@ -612,7 +628,7 @@ def get_leaderboard_data(limit: int = Query(default=10, ge=1, le=200)):
                     "username":     r["username"],
                     "pet_name":     r["pet_name"] or r["username"],
                     "pet_type":     r["pet_type"] or "",
-                    "total_likes":  r["total_likes"] or 0,
+                    "total_likes":  r["best_likes"] or 0,
                     "viral_score":  round(r["top_viral"] or 0, 2),
                     "bonus_points": r["bonus_points"],
                     "total_score":  round((r["top_viral"] or 0) + r["bonus_points"], 2),
@@ -683,7 +699,7 @@ def get_performance():
         return {"endpoint_performance": out}
     return track("performance", _)
 
-generate_daily_missions()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

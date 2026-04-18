@@ -232,8 +232,17 @@ document.addEventListener('keydown', e => {
 });
 
 // Redirect if already logged in
-if (localStorage.getItem('pawrank_user')) {
-  window.location.href = '/feed';
+const savedUser = localStorage.getItem('pawrank_user');
+if (savedUser) {
+  fetch(`/profile/${savedUser}`)
+    .then(res => {
+      if (res.ok) {
+        window.location.href = '/feed';
+      } else {
+        localStorage.clear();
+      }
+    })
+    .catch(() => localStorage.clear());
 }
 </script>
 </body>

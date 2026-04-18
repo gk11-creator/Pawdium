@@ -19,6 +19,9 @@
     }
     .mission-toast.show{opacity:1;transform:translateX(0)}
     .mission-toast-title{font-size:11px;opacity:.85;margin-bottom:2px}
+
+    .post-username{cursor:pointer}
+    .post-username:hover{text-decoration:underline}
   </style>
 </head>
 <body>
@@ -70,7 +73,16 @@
 
 <script>
 const ME = localStorage.getItem('pawrank_user');
-if (!ME) window.location.href = '/';
+if (!ME) {
+  window.location.href = '/';
+} else {
+  fetch(`/profile/${ME}`)
+    .then(res => {
+      if (!res.ok) { localStorage.clear(); window.location.href = '/'; }
+    })
+    .catch(() => { localStorage.clear(); window.location.href = '/'; });
+}
+
 document.getElementById('nav-user').textContent = '@' + ME;
 
 const likedPosts = new Set();
@@ -97,6 +109,10 @@ function formatDate(str) {
   return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
 }
 
+function visitProfile(username) {
+  location.href = `/profile?u=${username}`;
+}
+
 function renderPosts(posts) {
   const el = document.getElementById('feed-list');
   if (!posts.length) {
@@ -118,39 +134,50 @@ function renderPosts(posts) {
     const isLiked = likedPosts.has(p.id);
     const pct     = Math.round((p.likes / maxLikes) * 100);
     const medal   = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+    const avatar  = p.pet_image
+      ? `<img src="${p.pet_image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`
+      : '🐾';
 
     return `
     <div class="post-card" id="post-${p.id}">
       <div class="post-rank-badge">${medal}</div>
+
       <img class="post-image" src="${p.image_url}" alt="pet post"
         onerror="this.style.display='none'"/>
+
       <div class="post-body">
         <div class="post-header">
-          <div class="post-avatar">
-            ${p.pet_image ? `<img src="${p.pet_image}"/>` : '🐾'}
+          <div class="post-avatar" onclick="visitProfile('${p.username}')"
+            style="cursor:pointer">${avatar}</div>
+          <div class="post-username" onclick="visitProfile('${p.username}')">
+            @${p.username}
           </div>
-          <div class="post-username">@${p.username}</div>
           <div class="post-date">${formatDate(p.created_at)}</div>
         </div>
+
         ${p.location ? `<div class="post-location">📍 ${p.location}</div>` : ''}
+
         <div class="score-bar-wrap">
           <div class="score-bar-top">
             <span class="score-label">Likes</span>
-            <span class="score-value">❤️ ${p.likes}</span>
+            <span class="score-value">🐾 ${p.likes}</span>
           </div>
           <div class="score-bar">
             <div class="score-bar-fill" style="width:${pct}%"></div>
           </div>
         </div>
+
         ${p.caption ? `
           <div class="post-caption">
-            <strong>@${p.username}</strong>${p.caption}
+            <strong onclick="visitProfile('${p.username}')"
+              style="cursor:pointer">@${p.username}</strong>${p.caption}
           </div>` : ''}
+
         <div class="post-actions">
           <button class="action-btn ${isLiked ? 'liked' : ''}"
             id="like-btn-${p.id}"
             onclick="handleLike(${p.id})">
-            ${isLiked ? '❤️' : '🤍'}
+            ${isLiked ? '🐾' : '🐾'}
             <span class="like-count" id="like-count-${p.id}">${p.likes}</span>
           </button>
           <button class="action-btn" onclick="focusComment(${p.id})">
@@ -158,12 +185,14 @@ function renderPosts(posts) {
           </button>
         </div>
       </div>
+
       <div class="comments-section">
         <span class="view-comments" onclick="toggleComments(${p.id})">
           View comments
         </span>
         <div class="comment-list" id="comment-list-${p.id}" style="display:none"></div>
       </div>
+
       <div class="comment-input-row">
         <input class="comment-input" id="comment-input-${p.id}"
           placeholder="Add a comment..."
@@ -195,16 +224,16 @@ async function handleLike(postId) {
   if (data.status === 'liked') {
     likedPosts.add(postId);
     btn.classList.add('liked');
-    btn.innerHTML = `❤️ <span class="like-count" id="like-count-${postId}">${data.likes}</span>`;
-    toast('❤️ Liked!');
+    btn.innerHTML = `🐾 <span class="like-count" id="like-count-${postId}">${data.likes}</span>`;
+    toast('🐾 Liked!');
     if (data.missions_completed?.length) {
       showMissionToast(data.missions_completed, data.bonus_points);
     }
   } else {
     likedPosts.delete(postId);
     btn.classList.remove('liked');
-    btn.innerHTML = `🤍 <span class="like-count" id="like-count-${postId}">${data.likes}</span>`;
-    toast('💔 Unliked');
+    btn.innerHTML = `🐾 <span class="like-count" id="like-count-${postId}">${data.likes}</span>`;
+    toast('Unliked');
   }
 
   const post = allPosts.find(p => p.id === postId);
@@ -215,7 +244,7 @@ async function handleLike(postId) {
     const fill = document.querySelector(`#post-${postId} .score-bar-fill`);
     const val  = document.querySelector(`#post-${postId} .score-value`);
     if (fill) fill.style.width = pct + '%';
-    if (val)  val.textContent  = '❤️ ' + data.likes;
+    if (val)  val.textContent  = '🐾 ' + data.likes;
   }
 }
 
@@ -234,10 +263,11 @@ async function toggleComments(postId) {
     list.innerHTML = comments.length
       ? comments.map(c => `
           <div class="comment-item">
-            <strong>@${c.username}</strong>${c.content}
+            <strong onclick="visitProfile('${c.username}')"
+              style="cursor:pointer">@${c.username}</strong>${c.content}
             <span class="comment-time">${formatDate(c.created_at)}</span>
           </div>`).join('')
-      : '<div style="font-size:11px;color:#6b7db3">No comments yet</div>';
+      : '<div style="font-size:11px;color:#8a7560">No comments yet</div>';
     list.style.display = 'block';
   } else {
     list.style.display = 'none';
@@ -261,7 +291,8 @@ async function postComment(postId) {
   list.style.display = 'block';
   list.innerHTML = data.comments.map(c => `
     <div class="comment-item">
-      <strong>@${c.username}</strong>${c.content}
+      <strong onclick="visitProfile('${c.username}')"
+        style="cursor:pointer">@${c.username}</strong>${c.content}
       <span class="comment-time">${formatDate(c.created_at)}</span>
     </div>`).join('');
 

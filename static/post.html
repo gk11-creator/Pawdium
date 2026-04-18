@@ -8,43 +8,62 @@
   <link rel="stylesheet" href="/static/style.css"/>
   <style>
     .post-layout{
-      max-width:520px;
-      margin:0 auto;
-      padding:20px 16px 80px;
+      max-width:520px;margin:0 auto;padding:20px 16px 80px;
     }
+
+    /* CROP UPLOAD BOX */
     .upload-box{
       width:100%;aspect-ratio:1/1;
-      border:2px dashed var(--border);
-      border-radius:16px;
+      border:2px dashed var(--border);border-radius:16px;
       display:flex;flex-direction:column;
       align-items:center;justify-content:center;
-      cursor:pointer;
+      cursor:pointer;overflow:hidden;position:relative;
+      background:#fafaf5;margin-bottom:16px;
       transition:border-color .15s,background .15s;
-      overflow:hidden;position:relative;
-      background:#fafafa;margin-bottom:16px;
     }
-    .upload-box:hover{border-color:var(--brand2);background:#f0fff8}
-    .upload-box img{
-      width:100%;height:100%;object-fit:cover;
-      position:absolute;top:0;left:0;
-    }
+    .upload-box:hover{border-color:var(--brand2);background:#f5f5f0}
     .upload-icon{font-size:48px;margin-bottom:8px}
     .upload-text{font-size:13px;font-weight:700;color:var(--muted)}
     .upload-sub{font-size:11px;color:var(--muted);margin-top:4px}
     #image-input{display:none}
-    .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
-    .preview-overlay{
-      position:absolute;bottom:0;left:0;right:0;
-      background:linear-gradient(transparent,rgba(0,0,0,.4));
-      padding:12px;display:flex;justify-content:flex-end;
-    }
-    .change-photo{
-      background:rgba(255,255,255,.9);border:none;border-radius:20px;
-      padding:5px 12px;font-size:11px;font-weight:800;
-      cursor:pointer;font-family:'Nunito',sans-serif;
-    }
 
-    /* MISSION TOAST */
+    /* CROP CONTAINER */
+    .crop-container{
+      width:100%;aspect-ratio:1/1;
+      position:relative;overflow:hidden;
+      background:#000;border-radius:16px;
+      margin-bottom:16px;cursor:grab;
+    }
+    .crop-container:active{cursor:grabbing}
+    .crop-img{
+      position:absolute;
+      transform-origin:top left;
+      user-select:none;pointer-events:none;
+    }
+    .crop-controls{
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:16px;padding:0 4px;
+    }
+    .crop-label{font-size:11px;font-weight:800;color:var(--muted);min-width:50px}
+    .crop-controls input[type=range]{flex:1}
+    .crop-btn{
+      background:var(--brand2);color:#fff;border:none;
+      border-radius:20px;padding:5px 14px;
+      font-size:11px;font-weight:800;cursor:pointer;
+      font-family:'Nunito',sans-serif;
+    }
+    .crop-btn.secondary{background:#fff;color:var(--muted);border:1.5px solid var(--border)}
+
+    .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+
+    .current-theme{
+      background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+      color:#fff;border-radius:10px;padding:10px 14px;
+      font-size:13px;font-weight:800;margin-bottom:16px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .current-theme span{font-size:11px;opacity:.8;font-weight:600}
+
     .mission-toast{
       position:fixed;top:80px;right:20px;
       background:linear-gradient(135deg,#00c896,#00a87a);
@@ -72,13 +91,36 @@
     <div class="banner-title">📸 Create a Post</div>
   </div>
 
+  <!-- CURRENT THEME -->
+  <div class="current-theme">
+    🦁 This Month's Theme: <strong>Bravest Pet</strong>
+    <span style="margin-left:auto">April 2025</span>
+  </div>
+
+  <!-- UPLOAD / CROP -->
   <div class="upload-box" id="upload-box"
     onclick="document.getElementById('image-input').click()">
     <div class="upload-icon">📷</div>
     <div class="upload-text">Tap to upload a photo</div>
     <div class="upload-sub">JPG, PNG, GIF supported</div>
   </div>
-  <input type="file" id="image-input" accept="image/*" onchange="previewImage(event)"/>
+  <input type="file" id="image-input" accept="image/*" onchange="onImageSelected(event)"/>
+
+  <!-- CROP CONTROLS (hidden until image selected) -->
+  <div id="crop-section" style="display:none">
+    <div class="crop-container" id="crop-container"
+      onmousedown="startDrag(event)"
+      ontouchstart="startDragTouch(event)">
+      <img class="crop-img" id="crop-img" draggable="false"/>
+    </div>
+    <div class="crop-controls">
+      <span class="crop-label">Zoom</span>
+      <input type="range" id="zoom-slider" min="1" max="3" step="0.01" value="1"
+        oninput="applyTransform()"/>
+      <button class="crop-btn secondary" onclick="resetCrop()">Reset</button>
+      <button class="crop-btn" onclick="confirmCrop()">Crop ✓</button>
+    </div>
+  </div>
 
   <div class="form-card">
     <div class="field">
@@ -99,19 +141,6 @@
     <div class="field">
       <label>Location <span style="color:var(--muted);font-weight:600">(optional)</span></label>
       <input id="f-location" placeholder="e.g. Bloomington, IN"/>
-    </div>
-
-    <div class="field">
-      <label>Theme</label>
-      <select id="f-theme">
-        <option>Bravest Pet</option>
-        <option>Best Outfit</option>
-        <option>Best Matching Song</option>
-        <option>Smartest Pet</option>
-        <option>Cutest Pet</option>
-        <option>Most Look-alike Owner</option>
-        <option>Best Pose</option>
-      </select>
     </div>
 
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
@@ -148,9 +177,17 @@
 
 <script>
 const ME = localStorage.getItem('pawrank_user');
-if (!ME) window.location.href = '/';
-document.getElementById('nav-user').textContent = '@' + ME;
+if (!ME) {
+  window.location.href = '/';
+} else {
+  fetch(`/profile/${ME}`)
+    .then(res => {
+      if (!res.ok) { localStorage.clear(); window.location.href = '/'; }
+    })
+    .catch(() => { localStorage.clear(); window.location.href = '/'; });
+}
 
+document.getElementById('nav-user').textContent = '@' + ME;
 document.getElementById('post-date').textContent = new Date().toLocaleDateString('en-US', {
   year:'numeric', month:'long', day:'numeric'
 });
@@ -171,38 +208,160 @@ function showMissionToast(missions, bonus) {
   setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-let selectedFile = null;
-
-function previewImage(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  selectedFile = file;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const box = document.getElementById('upload-box');
-    box.innerHTML = `
-      <img src="${e.target.result}" alt="preview"/>
-      <div class="preview-overlay">
-        <button class="change-photo"
-          onclick="event.stopPropagation();document.getElementById('image-input').click()">
-          Change Photo
-        </button>
-      </div>`;
-  };
-  reader.readAsDataURL(file);
-}
-
 function updateCharCount() {
   document.getElementById('char-count').textContent =
     document.getElementById('f-caption').value.length;
 }
 
+// ── CROP SYSTEM ─────────────────────────────────────────────────────────────
+let originalFile = null;
+let croppedBlob  = null;
+let imgNaturalW  = 0;
+let imgNaturalH  = 0;
+let posX = 0, posY = 0;
+let scale = 1;
+let dragging = false;
+let dragStartX = 0, dragStartY = 0;
+let dragStartPosX = 0, dragStartPosY = 0;
+
+function onImageSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  originalFile = file;
+  croppedBlob  = null;
+
+  const url = URL.createObjectURL(file);
+  const img  = document.getElementById('crop-img');
+  img.onload = () => {
+    imgNaturalW = img.naturalWidth;
+    imgNaturalH = img.naturalHeight;
+    resetCrop();
+    document.getElementById('upload-box').style.display = 'none';
+    document.getElementById('crop-section').style.display = 'block';
+  };
+  img.src = url;
+}
+
+function resetCrop() {
+  const container = document.getElementById('crop-container');
+  const cw = container.offsetWidth;
+  const minScale = Math.max(cw / imgNaturalW, cw / imgNaturalH);
+  scale = minScale;
+  posX  = (cw - imgNaturalW * scale) / 2;
+  posY  = (cw - imgNaturalH * scale) / 2;
+  document.getElementById('zoom-slider').min   = minScale;
+  document.getElementById('zoom-slider').value = minScale;
+  applyTransform();
+}
+
+function applyTransform() {
+  scale = parseFloat(document.getElementById('zoom-slider').value);
+  clampPosition();
+  document.getElementById('crop-img').style.transform =
+    `translate(${posX}px, ${posY}px) scale(${scale})`;
+  document.getElementById('crop-img').style.transformOrigin = '0 0';
+}
+
+function clampPosition() {
+  const container = document.getElementById('crop-container');
+  const cw = container.offsetWidth;
+  const iw = imgNaturalW * scale;
+  const ih = imgNaturalH * scale;
+  posX = Math.min(0, Math.max(cw - iw, posX));
+  posY = Math.min(0, Math.max(cw - ih, posY));
+}
+
+function startDrag(e) {
+  dragging = true;
+  dragStartX    = e.clientX;
+  dragStartY    = e.clientY;
+  dragStartPosX = posX;
+  dragStartPosY = posY;
+  window.addEventListener('mousemove', onDrag);
+  window.addEventListener('mouseup',   endDrag);
+}
+
+function startDragTouch(e) {
+  const t = e.touches[0];
+  dragging = true;
+  dragStartX    = t.clientX;
+  dragStartY    = t.clientY;
+  dragStartPosX = posX;
+  dragStartPosY = posY;
+  window.addEventListener('touchmove', onDragTouch, {passive:false});
+  window.addEventListener('touchend',  endDrag);
+}
+
+function onDrag(e) {
+  if (!dragging) return;
+  posX = dragStartPosX + (e.clientX - dragStartX);
+  posY = dragStartPosY + (e.clientY - dragStartY);
+  applyTransform();
+}
+
+function onDragTouch(e) {
+  e.preventDefault();
+  if (!dragging) return;
+  const t = e.touches[0];
+  posX = dragStartPosX + (t.clientX - dragStartX);
+  posY = dragStartPosY + (t.clientY - dragStartY);
+  applyTransform();
+}
+
+function endDrag() {
+  dragging = false;
+  window.removeEventListener('mousemove', onDrag);
+  window.removeEventListener('mouseup',   endDrag);
+  window.removeEventListener('touchmove', onDragTouch);
+  window.removeEventListener('touchend',  endDrag);
+}
+
+function confirmCrop() {
+  const container = document.getElementById('crop-container');
+  const cw = container.offsetWidth;
+  const canvas = document.createElement('canvas');
+  canvas.width  = cw;
+  canvas.height = cw;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(
+    document.getElementById('crop-img'),
+    -posX / scale, -posY / scale,
+    cw / scale, cw / scale,
+    0, 0, cw, cw
+  );
+  canvas.toBlob(blob => {
+    croppedBlob = blob;
+    const url = URL.createObjectURL(blob);
+    document.getElementById('crop-section').style.display = 'none';
+    const box = document.getElementById('upload-box');
+    box.style.display = 'flex';
+    box.innerHTML = `
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0"/>
+      <div style="position:absolute;bottom:10px;right:10px">
+        <button onclick="event.stopPropagation();redoCrop()"
+          style="background:rgba(255,255,255,.9);border:none;border-radius:20px;
+                 padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;
+                 font-family:'Nunito',sans-serif">
+          Edit Crop
+        </button>
+      </div>`;
+    toast('✅ Crop applied!');
+  }, 'image/jpeg', 0.9);
+}
+
+function redoCrop() {
+  document.getElementById('upload-box').style.display = 'none';
+  document.getElementById('crop-section').style.display = 'block';
+  croppedBlob = null;
+}
+
+// ── SUBMIT ───────────────────────────────────────────────────────────────────
 async function submitPost() {
-  if (!selectedFile) { toast('⚠️ Please select a photo first!'); return; }
+  const fileToUpload = croppedBlob || originalFile;
+  if (!fileToUpload) { toast('⚠️ Please select a photo first!'); return; }
 
   const caption  = document.getElementById('f-caption').value.trim();
   const location = document.getElementById('f-location').value.trim();
-  const theme    = document.getElementById('f-theme').value;
   const btn      = document.getElementById('submit-btn');
 
   btn.textContent = 'Uploading...';
@@ -212,8 +371,7 @@ async function submitPost() {
   formData.append('username', ME);
   formData.append('caption',  caption);
   formData.append('location', location);
-  formData.append('theme',    theme);
-  formData.append('image',    selectedFile);
+  formData.append('image',    fileToUpload, 'post.jpg');
 
   try {
     const res  = await fetch('/upload', { method:'POST', body: formData });
