@@ -78,6 +78,10 @@ class RemoveEntry(BaseModel):
 def root():
     return FileResponse("static/index.html")
 
+@app.get("/submit", include_in_schema=False, response_class=HTMLResponse)
+def submit_page():
+    return FileResponse("static/submit.html")
+
 
 @app.post("/add", tags=["Leaderboard"], summary="Add or update an entry")
 def add_entry(entry: AddEntry):
